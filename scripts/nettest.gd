@@ -14,6 +14,7 @@ var m: Match
 var bot: AI
 var printed := false
 var _start_wait := 0.0
+var _report := 0.0
 
 
 func _ready() -> void:
@@ -69,6 +70,9 @@ func _process(delta: float) -> void:
 					m.ais.append(bot)
 	if bot and m.guest:
 		bot.update(delta)
+	if m.sim.time >= _report:
+		_report += 15.0
+		print("NETTEST progress t=%.0f fps=%d" % [m.sim.time, Engine.get_frames_per_second()])
 	if not printed and (m.sim.time >= minutes * 60.0 - 0.05 or m.sim.over):
 		printed = true
 		if Net.is_host():
