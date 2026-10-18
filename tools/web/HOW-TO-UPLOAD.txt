@@ -1,0 +1,20 @@
+Planar Wars, web version
+=========================
+
+1. Upload every file in this folder (including the hidden .htaccess) to one folder on your site,
+   for example  https://your-site.com/planar-wars/
+2. Open  https://your-site.com/planar-wars/index.html  in Chrome, Firefox or Edge.
+   The first load downloads about 40 MB, so it takes a moment.
+
+Requirements: the site must use https. No special server headers are needed (this build runs
+without multithreading). If the game stays on a loading screen, your server is probably not
+sending .wasm files as "application/wasm": the included .htaccess fixes that on Apache hosts;
+on nginx add  "application/wasm wasm;"  to mime.types.
+
+To show the game inside one of your own pages, paste:
+
+<iframe src="/planar-wars/index.html" width="1280" height="720" style="border:0; max-width:100%;"
+        allow="autoplay; fullscreen" allowfullscreen></iframe>
+
+Opening index.html straight from your computer (double-click) will not work; browsers block it.
+Desktop browsers only: it needs a mouse and keyboard.

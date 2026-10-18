@@ -1,0 +1,6 @@
+# Aether Drift web build: make sure the browser gets the right file types.
+AddType application/wasm .wasm
+AddType application/octet-stream .pck
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/wasm application/javascript text/html
+</IfModule>
