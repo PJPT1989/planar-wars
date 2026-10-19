@@ -26,6 +26,9 @@ func _ready() -> void:
 	if "--simtest" in args:
 		add_child(preload("res://scripts/simtest.gd").new())
 		return
+	if "--lineup" in args:
+		add_child(preload("res://scripts/lineup.gd").new())
+		return
 	ui_layer = CanvasLayer.new()
 	ui_layer.layer = 5
 	add_child(ui_layer)

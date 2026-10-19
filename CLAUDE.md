@@ -45,9 +45,21 @@ tooling). The web build is published on Petr's shop (`PJPT1989/tomano-collection
   to the snapshot. Signalling in the browser: `tools/web/planar-net.js` (rooms "pw-CODE" on the
   shop's `window.AetherSignal`, else a BroadcastChannel). Desktop uses ENet on port 24690.
 - Everything visual is generated from code: `MeshKit` with vertex colours; units and buildings use
-  `Game.mat_unit`/`mat_unit_gloss` (`shaders/unit.gdshader`), where magenta marker colours become
-  the team colour from the MultiMesh custom data. In the Compatibility renderer a MultiMesh with
-  custom data must also use instance colours (set to white) or COLOR comes out black.
+  `Game.mat_unit`/`mat_unit_gloss`/`mat_unit_glow` (`shaders/unit.gdshader`, `unit_glow.gdshader`),
+  where magenta marker colours become a colour slot (`slot_cols`: the four players, the races'
+  trims for portraits, white) picked by the MultiMesh custom data. In the Compatibility renderer
+  a MultiMesh with custom data must also use instance colours or COLOR comes out black; keep the
+  custom values small in case they are stored at low precision (phases are wrapped).
+- Animation is a vertex rig, not skeletons: `MeshKit.rig(part, pivot)` tags what follows as a
+  moving part (`Models.P_*`: legs, weapon/shield/spear/aim/cast arms, wings, four-legged gait,
+  wheels, recoil, head, tail, banners, gears, spinning rings) and `shaders/rig.gdshaderinc` turns
+  it about its pivot from the instance data View writes: custom `.x` colour slot, `.y` flash
+  (negative darkens), `.z` cycle phase (from the ground covered; buildings get the time), `.w`
+  attack swing 0..1, and the instance colour's alpha = how much it walks. Weapons go inside
+  `Models._hold` so they move with the arm. View keeps the fallen in `_corpses` (topple, sink).
+- `xvfb-run -a godot --path . --rendering-driver opengl3 -- --lineup` renders every race's troops in
+  four poses and its buildings (`/tmp/pw-lineup`); `godot --headless --path . -- --lineup --tris`
+  prints triangle counts (troops are about 1,000-2,500 each).
 - Ground vertex colours are sRGB (the ground shader squares them).
 - Quality (`Game.quality`, L key, `user://settings.cfg`): as in the sister games.
 

@@ -30,6 +30,7 @@ var mat_glow: ShaderMaterial
 var mat_gloss: ShaderMaterial
 var mat_unit: ShaderMaterial          # units and buildings: vertex colour with the team colour from the instance
 var mat_unit_gloss: ShaderMaterial
+var mat_unit_glow: ShaderMaterial     # glowing parts of units and buildings, moved with their rig
 var sounds := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player := 0
@@ -68,6 +69,18 @@ func _ready() -> void:
 	mat_unit_gloss = ShaderMaterial.new()
 	mat_unit_gloss.shader = mat_unit.shader
 	mat_unit_gloss.set_shader_parameter("gloss", 1.0)
+	mat_unit_glow = ShaderMaterial.new()
+	mat_unit_glow.shader = load("res://shaders/unit_glow.gdshader")
+	# colour slots for the marker parts: the players, the races' trims (portraits), white
+	var slots := PackedVector3Array()
+	for c in Data.TEAM_COLORS:
+		slots.append(Vector3(c.r, c.g, c.b))
+	for r in Data.RACE_ORDER:
+		var c: Color = Data.RACES[r].colors.trim
+		slots.append(Vector3(c.r, c.g, c.b))
+	slots.append(Vector3.ONE)
+	for m in [mat_unit, mat_unit_gloss, mat_unit_glow]:
+		m.set_shader_parameter("slot_cols", slots)
 	_setup_input()
 	for i in 14:
 		var p := AudioStreamPlayer.new()

@@ -31,3 +31,27 @@ an AI player.
   (WebRTC in the browser), a Codex showing the template table and how to play.
 - Tests: an AI-only sim test, a visual smoke test, a two-player online test (desktop and two
   browser tabs). All art and sound are generated in code.
+
+## Round 2: more detailed models and animation
+**Request (Petr):** "I would like to improve the visuals/graphics. What are my options?" Offered:
+detailed models, animation, terrain, effects, lighting, UI art. Petr: "lets do 1+2" (detailed
+models and animation).
+
+**Built:**
+- Troops rebuilt with more shape: lofted torsos, knees and elbows, boots, faces, helmets with
+  brims and nose guards, tabards that follow the body, belts with buckles and pouches, capes with
+  folds; swords with guards and pommels, leaf-bladed spears with pennants, kite shields with a
+  cross, curved bows with a nocked arrow, crossbows, rifles; lofted horses with a neck, head, mane,
+  tail and barding; spoked wheels; layered feathered wings.
+- Animation without skeletons: each model's parts are tagged (legs, weapon arm, shield arm, spear
+  arm, aiming arms, casting arm, wings, four-legged gait, wheels, barrels, head, tail) and a vertex
+  shader moves them. Troops walk in step with the ground they cover, swing, thrust, shoot with a
+  kick, cast with a raised staff, gallop in diagonal pairs, beat their wings, roll their wheels;
+  workers dig. The fallen topple (beasts and engines roll over, flyers drop), lie still and sink;
+  razed buildings crumble down.
+- Buildings: every one stands on paving of its race (cobbles, dark flagstones, cream and teal
+  tiles, a riveted plate), walls have plinths, cornices and corner posts, roofs have tile courses,
+  ridges and eaves, doors and windows have frames, sills and bars, half-timbering on Dominarian
+  houses; banners flutter, Avishkar gears turn, orbit rings spin.
+- A model check (`--lineup`) that renders every troop in four poses and every building.
+

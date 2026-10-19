@@ -72,8 +72,8 @@ static func generate(host: Node) -> void:
 		mm.mesh = mesh
 		mm.instance_count = 1
 		mm.set_instance_transform(0, Transform3D())
-		mm.set_instance_color(0, Color.WHITE)
-		mm.set_instance_custom_data(0, Color(Data.RACES[it[0]].colors.trim, 0.0))
+		mm.set_instance_color(0, Color(1, 1, 1, 0))
+		mm.set_instance_custom_data(0, Color(Data.TEAM_COLORS.size() + Data.RACE_ORDER.find(it[0]), 0, 0, 0))
 		var mi := MultiMeshInstance3D.new()
 		mi.multimesh = mm
 		var node := Node3D.new()

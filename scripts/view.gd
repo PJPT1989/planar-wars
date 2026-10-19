@@ -4,12 +4,22 @@ extends Node3D
 ## unit, building and deposit through MultiMeshes (one per model, all players in one batch, team
 ## colour from the instance data), plus selection rings, projectiles, dust and fire. It reads
 ## the Sim (the host's real one or a guest's mirror) and interpolates between its 10 Hz steps.
+## Units are animated through their rig (Models.P_*): View writes each one's walk cycle, how
+## much it walks and its attack swing into the instance data, and keeps the fallen for a moment
+## (they topple and sink).
 ## It also keeps the local player's fog of war and owns the camera.
 
 const PITCH := deg_to_rad(56.0)
 const FLY_HEIGHT := 4.5
 const ZOOM_MIN := 18.0
 const ZOOM_MAX := 75.0
+const SLOT_WHITE := 8.0                # colour slot in shaders/unit.gdshader for "no owner"
+const SWING_TIME := 0.45               # one blow of the attack animation, seconds
+## Metres covered per walk cycle (two steps), by role.
+const STRIDE := {"worker": 1.3, "infantry": 1.5, "spear": 1.5, "archer": 1.5, "caster": 1.3, "champion": 2.2, "cavalry": 3.2, "siege": 2.6}
+## Wing beats of the flyers, radians a second.
+const WING_BEAT := {"flyer:avishkar": 22.0, "flyer:phyrexia": 5.0, "flyer:dominaria": 6.0, "flyer:ravnica": 5.5}
+const CORPSE_TIME := 3.0
 
 var sim: Sim
 var me := -1                           # local player (-1: spectator, no fog)
@@ -37,7 +47,8 @@ var _ring_mesh: ArrayMesh
 var _projectiles: Array = []
 var _puffs: Array = []
 var _markers: Array = []
-var _last := {}                        # id -> {"atk": int, "hp": float, "flash": float, "pos": Vector2, "role", "owner", "cat", "swing": float}
+var _last := {}                        # id -> {"atk": int, "hp": float, "flash": float, "pos": Vector2, "role", "owner", "cat", "swing": float, "ph", "amt", "yaw", ...}
+var _corpses: Array = []               # fallen units and razed buildings, drawn until they have sunk
 var _res_dirty := true
 var _res_count := -1
 var _time := 0.0
@@ -322,7 +333,8 @@ class Batch:
 	func begin() -> void:
 		n = 0
 
-	func add(xf: Transform3D, c: Color) -> void:
+	## `c` is the custom data; `a` the instance colour's alpha (the walk amount of a rig).
+	func add(xf: Transform3D, c: Color, a := 1.0) -> void:
 		var o := n * STRIDE
 		if buf.size() < o + STRIDE:
 			buf.resize(maxi(64 * STRIDE, buf.size() * 2))
@@ -342,7 +354,7 @@ class Batch:
 		buf[o + 12] = 1.0
 		buf[o + 13] = 1.0
 		buf[o + 14] = 1.0
-		buf[o + 15] = 1.0
+		buf[o + 15] = a
 		buf[o + 16] = c.r
 		buf[o + 17] = c.g
 		buf[o + 18] = c.b
@@ -384,9 +396,6 @@ func _process(delta: float) -> void:
 	_place_camera()
 	for b in _batches.values():
 		b.begin()
-	var team_cols := []
-	for p in sim.players:
-		team_cols.append(Data.TEAM_COLORS[p.color % Data.TEAM_COLORS.size()])
 	var seen := {}
 	var res_n := 0
 	for e in sim.list:
@@ -395,7 +404,9 @@ func _process(delta: float) -> void:
 		seen[e.id] = true
 		var st: Dictionary = _last.get(e.id, {})
 		if st.is_empty():
-			st = {"atk": e.atk_n, "hp": e.hp, "flash": 0.0, "swing": 99.0, "pos": e.pos, "role": e.role, "owner": e.owner, "cat": e.cat, "flying": e.flying, "size": e.size}
+			st = {"atk": e.atk_n, "hp": e.hp, "flash": 0.0, "swing": 99.0, "pos": e.prev_pos.lerp(e.pos, alpha) if e.is_unit() else e.pos, "role": e.role, "owner": e.owner,
+				"cat": e.cat, "flying": e.flying, "size": e.size, "ph": randf() * TAU, "amt": 0.0, "yaw": e.facing, "elite": e.elite,
+				"race": sim.players[e.owner].race if e.owner >= 0 else ""}
 			_last[e.id] = st
 		if e.atk_n != st.atk:
 			st.atk = e.atk_n
@@ -407,6 +418,7 @@ func _process(delta: float) -> void:
 		st.flash = maxf(0.0, st.flash - delta)
 		st.swing += delta
 		var p: Vector2 = e.prev_pos.lerp(e.pos, alpha) if e.is_unit() else e.pos
+		var moved: float = p.distance_to(st.pos)
 		st.pos = p
 		if e.is_resource():
 			res_n += 1
@@ -417,7 +429,7 @@ func _process(delta: float) -> void:
 			_batch("res:" + e.role, func(): return Models.resource(e.role)).add(xf, Color(1, 1, 1, 0))
 			continue
 		var race: String = sim.players[e.owner].race if e.owner >= 0 else "dominaria"
-		var tc: Color = team_cols[e.owner] if e.owner >= 0 else Color.WHITE
+		var slot: float = float(sim.players[e.owner].color % Data.TEAM_COLORS.size()) if e.owner >= 0 else SLOT_WHITE
 		if e.is_building():
 			if e.owner != me and fog_on and not _visible_cell(MapData.cell_of(e.pos), true):
 				continue
@@ -425,12 +437,12 @@ func _process(delta: float) -> void:
 			var built := e.built if not e.complete else 1.0
 			var sy := 0.12 + 0.88 * built
 			var xf := Transform3D(Basis().scaled(Vector3(1, sy, 1)), Vector3(e.pos.x, h, e.pos.y))
-			var c := Color(tc.r, tc.g, tc.b, st.flash * 2.0 if e.complete else -0.4)
+			var c := Color(slot, st.flash * 2.0 if e.complete else -0.4, fmod(_time + e.id * 0.7, TAU * 5.0) if e.complete else 0.0, 0.0)
 			var role := e.role
 			_batch("b:%s:%s" % [race, role], func(): return Models.building(race, role)).add(xf, c)
 			if not e.complete:
 				var sz := e.size
-				_batch("scaffold:%d" % sz, func(): return Models.scaffold(sz)).add(Transform3D(Basis(), Vector3(e.pos.x, h, e.pos.y)), Color(1, 1, 1, 0))
+				_batch("scaffold:%d" % sz, func(): return Models.scaffold(sz)).add(Transform3D(Basis(), Vector3(e.pos.x, h, e.pos.y)), Color(SLOT_WHITE, 0, 0, 0))
 			elif e.hp < e.max_hp * 0.55:
 				_fire(e, h)
 			continue
@@ -439,28 +451,35 @@ func _process(delta: float) -> void:
 			continue
 		var y := sim.map.height_at(p)
 		var yaw := e.facing
+		st.yaw = yaw
+		st.elite = e.elite
+		# the walk cycle follows the ground covered; wings beat all the time
+		var walking := e.anim == Ent.A_WALK or moved > delta * 0.6
+		st.amt = move_toward(st.amt, 1.0 if walking or e.flying else 0.0, delta * 5.0)
+		st.ph = fmod(st.ph + (delta * WING_BEAT.get(e.role + ":" + race, 6.0) if e.flying else moved * TAU / STRIDE.get(e.role, 1.5)), TAU)
+		var sw := 0.0
+		if st.swing < SWING_TIME:
+			sw = maxf(st.swing / SWING_TIME, 0.001)
+		elif e.anim == Ent.A_WORK:
+			sw = maxf(fmod(_time * 1.4 + e.id * 0.37, 1.0), 0.001)
 		var lean := 0.0
 		var off := 0.0
-		match e.anim:
-			Ent.A_WALK:
-				off = absf(sin(_time * 9.0 + e.id)) * 0.09
-				lean = 0.06
-			Ent.A_WORK:
-				off = absf(sin(_time * 6.0 + e.id)) * 0.12
-				lean = 0.12 + sin(_time * 6.0 + e.id) * 0.1
+		if walking and not e.flying:
+			off = absf(sin(st.ph)) * 0.05 * st.amt
+			lean = 0.05
 		var fwd := 0.0
-		if st.swing < 0.35:
-			var sw: float = sin(st.swing / 0.35 * PI)
-			fwd = sw * (0.35 if not e.flying else 0.2)
-			lean += sw * 0.15
+		if sw > 0.0:
+			var hit := sin(sw * PI)
+			fwd = hit * (0.12 if not e.flying else 0.2)
+			lean += hit * 0.08
 		if e.flying:
-			y = maxf(y, 0.0) + FLY_HEIGHT + sin(_time * 2.0 + e.id) * 0.25
+			y = maxf(y, 0.0) + FLY_HEIGHT + sin(_time * 2.0 + e.id) * 0.25 - sin(st.ph) * 0.08
 		var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lean)
 		if e.elite:
 			basis = basis.scaled(Vector3.ONE * 1.08)
 		var origin := Vector3(p.x, y + off, p.y) + Basis(Vector3.UP, yaw) * Vector3(0, 0, fwd)
 		var role := e.role
-		_batch("u:%s:%s" % [race, role], func(): return Models.unit(race, role)).add(Transform3D(basis, origin), Color(tc.r, tc.g, tc.b, st.flash * 2.5))
+		_batch("u:%s:%s" % [race, role], func(): return Models.unit(race, role)).add(Transform3D(basis, origin), Color(slot, st.flash * 2.5, st.ph, sw), st.amt)
 		if e.flying:
 			_batch("shadow", func(): return _shadow_mesh(), false).add(Transform3D(Basis().scaled(Vector3(e.radius * 1.1, 1, e.radius * 1.1)), Vector3(p.x, sim.map.height_at(p) + 0.08, p.y)), Color(0, 0, 0, 0.35))
 	# the dead
@@ -470,6 +489,7 @@ func _process(delta: float) -> void:
 			if st.cat != Ent.RESOURCE and (st.owner == me or not fog_on or _visible_cell(MapData.cell_of(st.pos), st.cat == Ent.BUILDING)):
 				_on_death(st)
 			_last.erase(id)
+	_draw_corpses(delta)
 	_draw_rings()
 	_draw_fx(delta)
 	for b in _batches.values():
@@ -646,6 +666,9 @@ func _near_camera(p: Vector2) -> bool:
 func _on_death(st: Dictionary) -> void:
 	var p: Vector2 = st.pos
 	var y := sim.map.height_at(p)
+	if st.race != "":
+		_corpses.append({"t": 0.0, "pos": p, "race": st.race, "role": st.role, "cat": st.cat, "yaw": st.get("yaw", 0.0), "flying": st.flying,
+			"slot": float(sim.players[st.owner].color % Data.TEAM_COLORS.size()), "elite": st.get("elite", false), "side": 1.0 if (st.owner + int(p.x)) % 2 == 0 else -1.0})
 	if st.cat == Ent.BUILDING:
 		var s: float = st.size * Data.CELL
 		for i in 10:
@@ -659,6 +682,50 @@ func _on_death(st: Dictionary) -> void:
 		_puffs.append({"p": Vector3(p.x, y + 0.3 + fy, p.y), "t": 0.0, "life": 0.9, "size": 1.1, "col": Color(0.5, 0.46, 0.4), "rise": 0.8})
 		if _near_camera(p):
 			Game.play("death", -12.0)
+
+
+## The fallen: a unit topples (beasts and engines roll onto their side, flyers drop), lies
+## still, then sinks into the ground; a razed building crumbles down into its dust.
+func _draw_corpses(delta: float) -> void:
+	var keep := []
+	for c in _corpses:
+		c.t += delta
+		var p: Vector2 = c.pos
+		var ground := sim.map.height_at(p)
+		if c.cat == Ent.BUILDING:
+			var f: float = c.t / 1.6
+			if f >= 1.0:
+				continue
+			keep.append(c)
+			var ease := f * f
+			var b := Basis(Vector3.FORWARD, sin(c.t * 9.0) * 0.02 * (1.0 - f)).scaled(Vector3(1.0 + ease * 0.08, maxf(1.0 - ease, 0.02), 1.0 + ease * 0.08))
+			var race: String = c.race
+			var role: String = c.role
+			_batch("b:%s:%s" % [race, role], func(): return Models.building(race, role)).add(Transform3D(b, Vector3(p.x, ground - ease * 0.4, p.y)), Color(c.slot, -0.5, 0.0, 0.0))
+			continue
+		if c.t >= CORPSE_TIME:
+			continue
+		keep.append(c)
+		var fall := clampf(c.t / 0.5, 0.0, 1.0)
+		fall = 1.0 - (1.0 - fall) * (1.0 - fall)
+		var y := ground
+		if c.flying:
+			var drop := clampf(c.t / 0.7, 0.0, 1.0)
+			y = maxf(ground, 0.0) + FLY_HEIGHT * (1.0 - drop * drop)
+			fall = drop
+		var sink := clampf((c.t - CORPSE_TIME + 1.2) / 1.2, 0.0, 1.0)
+		var b := Basis(Vector3.UP, c.yaw)
+		var beast: bool = c.role in ["cavalry", "siege", "flyer"] or (c.role == "worker" and c.race in ["phyrexia", "avishkar"]) or (c.role == "champion" and c.race in ["ravnica", "avishkar"])
+		if beast:
+			b = b * Basis(Vector3.FORWARD, c.side * fall * 1.3)
+		else:
+			b = b * Basis(Vector3.RIGHT, -fall * 1.45)
+		if c.elite:
+			b = b.scaled(Vector3.ONE * 1.08)
+		var race: String = c.race
+		var role: String = c.role
+		_batch("u:%s:%s" % [race, role], func(): return Models.unit(race, role)).add(Transform3D(b, Vector3(p.x, y + 0.12 * fall - sink * 1.5, p.y)), Color(c.slot, -0.45 * fall, 0.0, 0.0), 0.0)
+	_corpses = keep
 
 
 func _fire(e: Ent, h: float) -> void:

@@ -1,10 +1,14 @@
 shader_type spatial;
 // Units and buildings, drawn in MultiMeshes. Vertex colour, except that parts painted in the
-// marker colour (magenta: equal red and blue, no green) take the owner's team colour from the
-// instance's custom data, scaled by the marker's brightness. Custom alpha above zero flashes
-// the model (a fresh hit); below zero it darkens it (an unfinished building). With `gloss` on
-// (porcelain, brass, oil) it also gets a sharp highlight and a cheap reflection of the sky.
+// marker colour (magenta: equal red and blue, no green) take the owner's colour, scaled by the
+// marker's brightness. INSTANCE_CUSTOM.x picks that colour from `slot_cols` (players, then the
+// races' trims for portraits, then white); .y above zero flashes the model (a fresh hit), below
+// zero darkens it (an unfinished building or a corpse); .z/.w and the instance alpha drive the
+// rigged parts (rig.gdshaderinc). With `gloss` on (porcelain, brass, oil) it also gets a sharp
+// highlight and a cheap reflection of the sky.
 render_mode cull_back;
+
+#include "res://shaders/rig.gdshaderinc"
 
 uniform float gloss = 0.0;
 uniform vec3 sky_top : source_color = vec3(0.3, 0.45, 0.8);
@@ -14,7 +18,9 @@ uniform vec3 sky_ground : source_color = vec3(0.3, 0.3, 0.25);
 varying vec4 team;
 
 void vertex() {
-	team = INSTANCE_CUSTOM;
+	rig(VERTEX, NORMAL, UV, UV2, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, COLOR.a, TIME);
+	COLOR.a = 1.0;
+	team = vec4(slot_cols[clamp(int(INSTANCE_CUSTOM.x + 0.5), 0, 8)], INSTANCE_CUSTOM.y);
 }
 
 void fragment() {

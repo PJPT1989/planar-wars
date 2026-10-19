@@ -96,6 +96,8 @@ other through the shop's Supabase channel. The host's computer runs the match an
   screenshots (default `/tmp/pw-shots`).
 - `tools/net_test.sh [dir]` runs a host and a guest on this computer in one online match; both
   print the state of the match at the same moment and the lines must match.
+- `xvfb-run -a godot --path . --rendering-driver opengl3 -- --lineup` renders every model close up
+  (troops standing, walking, winding up and striking; buildings) into `/tmp/pw-lineup`.
 
 ## Files
 | Path | What |
@@ -109,7 +111,8 @@ other through the shop's Supabase channel. The host's computer runs the match an
 | `scripts/hud.gd` | Top bar, minimap, selection panel, command card, menu, results |
 | `scripts/main.gd` | Title, skirmish setup, multiplayer rooms, codex, how to play |
 | `scripts/net.gd` | Online rooms and snapshots; `tools/web/planar-net.js` is the browser signalling |
-| `scripts/models.gd`, `mesh_kit.gd` | Every model, built in code |
+| `scripts/models.gd`, `mesh_kit.gd` | Every model, built in code, with its moving parts tagged for animation |
+| `scripts/lineup.gd` | The model check (`--lineup`) |
 | `scripts/portraits.gd` | Renders the portraits for the command card and codex at start-up |
 | `scripts/game.gd` | Settings, materials, fonts and the generated sounds |
-| `shaders/` | Units (team colour), ground, water, effects |
+| `shaders/` | Units (team colour, and `rig.gdshaderinc`, which animates legs, arms, wings and wheels), ground, water, effects |

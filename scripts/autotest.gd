@@ -105,6 +105,15 @@ func _run() -> void:
 		await _wait(20)
 		await _shot("1%d_map_battle" % map_i)
 		print("AUTOTEST battle at %.0f min, %d units of mine selected" % [m.sim.time / 60.0, army.size()])
+		var t0 := Time.get_ticks_usec()
+		await _wait(30)
+		print("AUTOTEST frame %.1f ms over the battle, %d units on the map" % [(Time.get_ticks_usec() - t0) / 30000.0, m.sim.list.size()])
+		# close up on the fighting: walking, striking and falling troops
+		m.view.look_at_point(_find_fight(m))
+		m.view.zoom_by(0.42)
+		await _wait(8)
+		await _shot("1%d_battle_close" % map_i)
+		m.view.zoom_by(1.0 / 0.42)
 		if map_i == 0:
 			m.view.zoom_by(0.5)
 			await _wait(10)

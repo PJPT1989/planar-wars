@@ -3,6 +3,9 @@ extends RefCounted
 ## Builds meshes out of boxes, cylinders, cones, spheres, rings and lofted shells with vertex
 ## colours. A mesh has up to three surfaces: "solid" (lit), "glow" (emissive aether and magic)
 ## and "gloss" (porcelain, oil, polished metal). Every unit, building and prop is made with this.
+## Units and buildings are rigged: `rig(part, pivot)` tags what follows as a moving part (a leg,
+## an arm, a wing, a wheel; see Models.P_*) turning about `pivot`, which shaders/rig.gdshaderinc
+## animates from the instance data.
 
 var _st: Array[SurfaceTool] = [SurfaceTool.new(), SurfaceTool.new(), SurfaceTool.new()]
 var _used := [false, false, false]
@@ -10,6 +13,9 @@ var _used := [false, false, false]
 var xf := Transform3D.IDENTITY
 ## While true, everything that does not glow goes on the glossy surface.
 var gloss := false
+## The rigged part (0: fixed) and its pivot for everything added (see `rig`).
+var part := 0
+var pivot := Vector3.ZERO
 
 
 func _init() -> void:
@@ -35,6 +41,8 @@ func tri(a: Vector3, b: Vector3, c: Vector3, col: Color, glow := false, na := Ve
 	var i := 1 if glow else (2 if gloss else 0)
 	_used[i] = true
 	var s := _st[i]
+	s.set_uv(Vector2(part, pivot.x))
+	s.set_uv2(Vector2(pivot.y, pivot.z))
 	s.set_color(col)
 	s.set_normal(na)
 	s.add_vertex(a)
@@ -42,6 +50,13 @@ func tri(a: Vector3, b: Vector3, c: Vector3, col: Color, glow := false, na := Ve
 	s.add_vertex(c)
 	s.set_normal(nb)
 	s.add_vertex(b)
+
+
+## Tags everything added from now on as part `p` turning about `at` (in the same space as the
+## points; `xf` as it is now applies to it). rig() alone goes back to the fixed body.
+func rig(p := 0, at := Vector3.ZERO) -> void:
+	part = p
+	pivot = xf * at
 
 
 func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color, glow := false) -> void:
