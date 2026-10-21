@@ -133,6 +133,7 @@ func _on_net_start(cfg: Dictionary) -> void:
 
 func _on_match_finished(_result: Dictionary) -> void:
 	var was_online := match_node != null and match_node.online
+	Game.play_music(["title"])
 	if match_node:
 		match_node.queue_free()
 		match_node = null
@@ -207,6 +208,7 @@ func _race_label(r: String) -> String:
 
 func show_title() -> void:
 	_start_demo()
+	Game.play_music(["title"])
 	_new_screen("Title", 0.0)
 	var side := ColorRect.new()
 	side.color = Color(0.03, 0.025, 0.04, 0.72)
@@ -238,6 +240,11 @@ func show_title() -> void:
 		Game.toggle_mute()
 		sb.text = "Sound: " + ("off" if Game.muted else "on"))
 	col.add_child(sb)
+	var mb := Ui.button("Music: " + ("on" if Game.music_on else "off"), func(): pass, 16)
+	mb.pressed.connect(func():
+		Game.toggle_music()
+		mb.text = "Music: " + ("on" if Game.music_on else "off"))
+	col.add_child(mb)
 	var foot := Ui.wrap("Phyrexia, Dominaria, Ravnica and Avishkar fight over four planes. Build a base, gather gold and aether, raise an army and raze your rivals.", 15, Color(0.75, 0.72, 0.66), 310)
 	col.add_child(foot)
 
@@ -424,7 +431,7 @@ func show_help() -> void:
 [b]Army.[/b] Barracks, stables, workshops and the sanctum train troops. Every race uses the same template of roles, but names, looks, numbers and what is available differ. Infantry beats spearmen, spearmen stop cavalry and champions, archers shoot infantry and flyers, cavalry runs down archers and siege engines, and siege engines raze buildings.
 [b]Ages and research.[/b] Advance your hall to the second and third age to unlock new buildings, troops and upgrades. Each race lacks a few upgrades and has one unique technology. See the Codex.
 [b]Mouse.[/b] Left click selects, drag selects many, double click selects all of one kind on screen. Right click moves, attacks, gathers or sets a rally point.
-[b]Keys.[/b] Command card: Q W E R / A S D F / Z X C V. A then click: attack-move. Ctrl+1-9 sets a group, 1-9 selects it. H: town hall. Period: idle worker. Space: last attack. Arrows or the screen edge pan, the wheel zooms. Esc: menu. L: graphics. M: sound."""
+[b]Keys.[/b] Command card: Q W E R / A S D F / Z X C V. A then click: attack-move. Ctrl+1-9 sets a group, 1-9 selects it. H: town hall. Period: idle worker. Space: last attack. Arrows or the screen edge pan, the wheel zooms. Esc: menu. L: graphics. M: sound. N: music."""
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.fit_content = true

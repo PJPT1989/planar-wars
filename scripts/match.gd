@@ -63,6 +63,7 @@ func start(c: Dictionary) -> void:
 		hud = Hud.new()
 		add_child(hud)
 		hud.setup(self)
+		Game.play_music(Game.match_playlist(sim.players[me].race if me >= 0 else ""))
 	Game.quality_changed.connect(view.apply_quality)
 
 
@@ -235,6 +236,10 @@ func _key(k: InputEventKey) -> void:
 	if code == KEY_M and not k.ctrl_pressed:
 		Game.toggle_mute()
 		hud.notice("Sound off" if Game.muted else "Sound on")
+		return
+	if code == KEY_N:
+		Game.toggle_music()
+		hud.notice("Music on" if Game.music_on else "Music off")
 		return
 	if code >= KEY_0 and code <= KEY_9:
 		var n := code - KEY_0

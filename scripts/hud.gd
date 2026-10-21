@@ -366,12 +366,17 @@ func toggle_menu() -> void:
 		Game.toggle_mute()
 		sb.text = "Sound: " + ("off" if Game.muted else "on"))
 	col.add_child(sb)
+	var mb := Ui.button("Music: " + ("on" if Game.music_on else "off"), func(): pass)
+	mb.pressed.connect(func():
+		Game.toggle_music()
+		mb.text = "Music: " + ("on" if Game.music_on else "off"))
+	col.add_child(mb)
 	if m.me >= 0 and m.sim.players[m.me].alive:
 		col.add_child(Ui.button("Resign", func():
 			m.issue({"t": "resign"})
 			toggle_menu()))
 	col.add_child(Ui.button("Quit to title", func(): m.leave()))
-	col.add_child(Ui.wrap("Left click selects, drag to box-select. Right click moves, attacks, gathers, builds or sets a rally point. Command keys: Q W E R / A S D F / Z X C V. Ctrl+1-9 makes a group. H: town hall, period: idle worker, space: last attack. Arrows or the screen edge pan, the wheel zooms. L: graphics, M: sound." + ("" if m.online else " +/-: game speed."), 15, Color(0.8, 0.77, 0.7), 380))
+	col.add_child(Ui.wrap("Left click selects, drag to box-select. Right click moves, attacks, gathers, builds or sets a rally point. Command keys: Q W E R / A S D F / Z X C V. Ctrl+1-9 makes a group. H: town hall, period: idle worker, space: last attack. Arrows or the screen edge pan, the wheel zooms. L: graphics, M: sound, N: music." + ("" if m.online else " +/-: game speed."), 15, Color(0.8, 0.77, 0.7), 380))
 	menu.visible = true
 	menu.reset_size()
 	menu.position = (root.size - menu.size) * 0.5

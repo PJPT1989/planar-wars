@@ -43,6 +43,7 @@ func _run() -> void:
 	main.show_title()
 	await _wait(30)
 	await _shot("01_title")
+	print("AUTOTEST music ", Game.music_now())
 	main.show_skirmish()
 	await _wait(5)
 	await _shot("02_skirmish")
@@ -65,7 +66,7 @@ func _run() -> void:
 		]
 		var m: Match = main.start_match({"map": map_i, "seed": 100 + map_i, "players": players, "me": 0})
 		await _wait(10)
-		print("AUTOTEST map ", map_i, " ", Data.MAPS[map_i].name, " as ", race)
+		print("AUTOTEST map ", map_i, " ", Data.MAPS[map_i].name, " as ", race, ", music ", Game.music_now())
 		# select the workers and open the build menu
 		var workers := []
 		var hall: Ent

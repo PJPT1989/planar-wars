@@ -55,3 +55,16 @@ models and animation).
   houses; banners flutter, Avishkar gears turn, orbit rings spin.
 - A model check (`--lineup`) that renders every troop in four poses and every building.
 
+## Round 3: music
+**Request (Petr):** "can there be added music?"
+
+**Built:**
+- Five original tracks, synthesised by `tools/gen_music.py` (numpy instruments: strings, choir,
+  horn, flute, plucked lute and harp, harpsichord, sitar, santoor, tanpura drone, bells, machine
+  clangs, taiko, frame drum, snare, tabla; a convolution reverb) and saved as Ogg Vorbis in
+  `music/` (about 5.6 MB). Each loops seamlessly.
+- Title theme on the menus; in a match your race's theme, then the other races' and the title
+  theme in turn, with a cross-fade between tracks.
+- Music on/off: a button on the title screen and in the menu, N in a match, saved with the
+  other settings. M still mutes everything.
+

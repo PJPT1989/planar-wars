@@ -34,7 +34,7 @@ characters, models and text are original.
 | Arrows, screen edge, middle drag, wheel | Pan and zoom the camera |
 | + / - | Game speed (not online) |
 | Esc or F10 | Menu (pauses when not online) |
-| L / M | Graphics quality (Low, Medium, High) / sound on or off |
+| L / M / N | Graphics quality (Low, Medium, High) / all sound on or off / music on or off |
 
 ## One template, four races
 Every race builds from the same template of troops, buildings and technologies, like the
@@ -99,6 +99,17 @@ other through the shop's Supabase channel. The host's computer runs the match an
 - `xvfb-run -a godot --path . --rendering-driver opengl3 -- --lineup` renders every model close up
   (troops standing, walking, winding up and striking; buildings) into `/tmp/pw-lineup`.
 
+## Music
+The title screen plays the Planar Wars theme. In a match you hear your race's theme first, then
+the other races' themes and the title theme in turn. Each is about a minute and a half:
+- **Title:** a slow D minor march for horns, strings, choir and war drums.
+- **Phyrexia:** a cold drone, clanking metal machinery, low brass and a dark choir.
+- **Dominaria:** an old-world folk tune in 6/8 for lute, recorder, harp and frame drum.
+- **Ravnica:** gothic city music in A minor with harpsichord, strings, bells and a choir.
+- **Avishkar:** a bright workshop city: drone strings, sitar and bansuri, tabla, a ticking santoor.
+
+The Music button on the title screen and in the menu, or N in a match, turns it off; M mutes everything.
+
 ## Files
 | Path | What |
 | --- | --- |
@@ -114,5 +125,6 @@ other through the shop's Supabase channel. The host's computer runs the match an
 | `scripts/models.gd`, `mesh_kit.gd` | Every model, built in code, with its moving parts tagged for animation |
 | `scripts/lineup.gd` | The model check (`--lineup`) |
 | `scripts/portraits.gd` | Renders the portraits for the command card and codex at start-up |
-| `scripts/game.gd` | Settings, materials, fonts and the generated sounds |
+| `scripts/game.gd` | Settings, materials, fonts, the generated sounds and the music player |
+| `music/`, `tools/gen_music.py` | The music: a title theme and one theme per race, synthesised by the script (`python3 tools/gen_music.py`, needs numpy and ffmpeg) |
 | `shaders/` | Units (team colour, and `rig.gdshaderinc`, which animates legs, arms, wings and wheels), ground, water, effects |
