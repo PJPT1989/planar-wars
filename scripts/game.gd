@@ -36,14 +36,15 @@ var sounds := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player := 0
 var _last_played := {}
-var _music: Array[AudioStreamPlayer] = []   # two, so one track can fade into the next
-var _music_cur := 0
+var _music: AudioStreamPlayer
+var _music_bus := 0
 var _playlist: Array = []
 var _playlist_at := 0
+var _track_end := 0                     # Time.get_ticks_msec() when the current track ends
 var _music_tween: Tween
 
-const MUSIC_DB := -7.0
-const MUSIC_FADE := 1.6
+const MUSIC_DB := -10.0                  # the Music bus level (default_bus_layout.tres has the bus)
+const MUSIC_FADE := 1.2
 
 
 func _ready() -> void:
@@ -98,17 +99,15 @@ func _ready() -> void:
 		_players.append(p)
 	_build_sounds()
 	AudioServer.set_bus_mute(0, muted)
-	AudioServer.add_bus()
-	var bus := AudioServer.bus_count - 1
-	AudioServer.set_bus_name(bus, "Music")
-	AudioServer.set_bus_send(bus, "Master")
-	AudioServer.set_bus_mute(bus, not music_on)
-	for i in 2:
-		var p := AudioStreamPlayer.new()
-		p.bus = "Music"
-		p.finished.connect(_next_track)
-		add_child(p)
-		_music.append(p)
+	# the browser plays streams as Web Audio samples: it follows bus volumes but not volume_db
+	# changes or buses made in code, so fades go through the bus and the bus is in the layout file
+	_music_bus = AudioServer.get_bus_index("Music")
+	AudioServer.set_bus_mute(_music_bus, not music_on)
+	AudioServer.set_bus_volume_db(_music_bus, MUSIC_DB)
+	_music = AudioStreamPlayer.new()
+	_music.bus = "Music"
+	add_child(_music)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func _setup_input() -> void:
@@ -159,7 +158,7 @@ func toggle_mute() -> void:
 
 func toggle_music() -> void:
 	music_on = not music_on
-	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), not music_on)
+	AudioServer.set_bus_mute(_music_bus, not music_on)
 	_save()
 
 
@@ -197,13 +196,16 @@ func play(name: String, vol_db := 0.0, pitch := 1.0) -> void:
 # Tracks are music/<name>.ogg, made by tools/gen_music.py: "title" and one per race.
 
 ## Plays the tracks one after another, round and round (one track loops on its own).
-## Fades over from whatever is playing; does nothing if this playlist already plays.
+## Fades out whatever is playing first; does nothing if this playlist already plays.
 func play_music(tracks: Array) -> void:
 	if tracks == _playlist or "--simtest" in OS.get_cmdline_user_args():
 		return
 	_playlist = tracks
 	_playlist_at = 0
-	_start_track()
+	if _music.playing:
+		_fade(-50.0, MUSIC_FADE * 0.6).tween_callback(_start_track)
+	else:
+		_start_track()
 
 
 ## A match's music: the player's race theme first, then the other races' and the title theme.
@@ -218,29 +220,31 @@ func match_playlist(race: String) -> Array:
 
 ## The track playing now ("" if none).
 func music_now() -> String:
-	return str(_playlist[_playlist_at]) if not _playlist.is_empty() and _music[_music_cur].playing else ""
+	return str(_playlist[_playlist_at]) if not _playlist.is_empty() and _music.playing else ""
 
 
 func _start_track() -> void:
 	var stream: AudioStreamOggVorbis = load("res://music/%s.ogg" % _playlist[_playlist_at])
 	stream.loop = _playlist.size() == 1
-	var old := _music[_music_cur]
-	_music_cur = 1 - _music_cur
-	var p := _music[_music_cur]
-	p.stream = stream
-	p.volume_db = -40.0
-	p.play()
+	_track_end = Time.get_ticks_msec() + int(stream.get_length() * 1000.0)
+	AudioServer.set_bus_volume_db(_music_bus, -50.0)
+	_music.stream = stream
+	_music.play()
+	_fade(MUSIC_DB, MUSIC_FADE)
+
+
+func _fade(db: float, time: float) -> Tween:
 	if _music_tween:
 		_music_tween.kill()
-	_music_tween = create_tween().set_parallel()
-	_music_tween.tween_property(p, "volume_db", MUSIC_DB, MUSIC_FADE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	if old.playing:
-		_music_tween.tween_property(old, "volume_db", -60.0, MUSIC_FADE)
-		_music_tween.chain().tween_callback(old.stop)
+	_music_tween = create_tween()
+	_music_tween.tween_method(func(v: float): AudioServer.set_bus_volume_db(_music_bus, v),
+			AudioServer.get_bus_volume_db(_music_bus), db, time)
+	return _music_tween
 
 
-func _next_track() -> void:
-	if _playlist.size() > 1 and not _music[_music_cur].playing:
+# the next track by the clock: the browser's sample playback does not always report the end
+func _process(_delta: float) -> void:
+	if _playlist.size() > 1 and Time.get_ticks_msec() > _track_end:
 		_playlist_at = (_playlist_at + 1) % _playlist.size()
 		_start_track()
 

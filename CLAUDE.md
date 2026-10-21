@@ -64,6 +64,10 @@ tooling). The web build is published on Petr's shop (`PJPT1989/tomano-collection
   (numpy and ffmpeg; `--wav` also writes `/tmp/pw-music/<name>.wav`). Rerun it after changing a
   track and commit the .ogg. `Game.play_music([tracks])` cross-fades to a playlist on the "Music"
   bus (`Game.music_on`, N key); `Game.match_playlist(race)` is what a match plays.
+  The browser build plays audio as Web Audio samples (Godot 4.3 default), which ignore buses made
+  in code and `volume_db` changes after `play()`: the Music bus lives in `default_bus_layout.tres`,
+  fades tween the bus volume, and the next track starts by the clock. Check web audio by hooking an
+  AnalyserNode in front of the AudioContext destination in headless Chromium.
 - Ground vertex colours are sRGB (the ground shader squares them).
 - Quality (`Game.quality`, L key, `user://settings.cfg`): as in the sister games.
 
