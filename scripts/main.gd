@@ -133,7 +133,7 @@ func _on_net_start(cfg: Dictionary) -> void:
 
 func _on_match_finished(_result: Dictionary) -> void:
 	var was_online := match_node != null and match_node.online
-	Game.play_music(["title"])
+	Game.play_music(Game.MENU_MUSIC)
 	if match_node:
 		match_node.queue_free()
 		match_node = null
@@ -208,7 +208,7 @@ func _race_label(r: String) -> String:
 
 func show_title() -> void:
 	_start_demo()
-	Game.play_music(["title"])
+	Game.play_music(Game.MENU_MUSIC)
 	_new_screen("Title", 0.0)
 	var side := ColorRect.new()
 	side.color = Color(0.03, 0.025, 0.04, 0.72)
@@ -245,6 +245,11 @@ func show_title() -> void:
 		Game.toggle_music()
 		mb.text = "Music: " + ("on" if Game.music_on else "off"))
 	col.add_child(mb)
+	var vb := Ui.button("Voices: " + ("on" if Game.voices_on else "off"), func(): pass, 16)
+	vb.pressed.connect(func():
+		Game.toggle_voices()
+		vb.text = "Voices: " + ("on" if Game.voices_on else "off"))
+	col.add_child(vb)
 	var foot := Ui.wrap("Phyrexia, Dominaria, Ravnica and Avishkar fight over four planes. Build a base, gather gold and aether, raise an army and raze your rivals.", 15, Color(0.75, 0.72, 0.66), 310)
 	col.add_child(foot)
 

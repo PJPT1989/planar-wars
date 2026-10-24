@@ -100,15 +100,29 @@ other through the shop's Supabase channel. The host's computer runs the match an
   (troops standing, walking, winding up and striking; buildings) into `/tmp/pw-lineup`.
 
 ## Music
-The title screen plays the Planar Wars theme. In a match you hear your race's theme first, then
-the other races' themes and the title theme in turn. Each is about a minute and a half:
-- **Title:** a slow D minor march for horns, strings, choir and war drums.
-- **Phyrexia:** a cold drone, clanking metal machinery, low brass and a dark choir.
-- **Dominaria:** an old-world folk tune in 6/8 for lute, recorder, harp and frame drum.
-- **Ravnica:** gothic city music in A minor with harpsichord, strings, bells and a choir.
-- **Avishkar:** a bright workshop city: drone strings, sitar and bansuri, tabla, a ticking santoor.
+Fifteen tracks of about a minute and a half each. The menus play the three Planar Wars themes in
+turn; in a match you hear your race's three themes first, then the other races' and the menu
+themes.
+- **Planar Wars:** a slow D minor march for horns, strings, choir and war drums; *Gathering
+  Storm*, a driving E minor string ostinato under a horn call; *Elegy for the Planes*, a slow
+  waltz for harp, flute and choir.
+- **Phyrexia:** a cold drone with clanking machinery, low brass and a dark choir; *Glistening
+  Oil*, quicker metal and a strained horn; *Compleation*, a dirge with tolling bells.
+- **Dominaria:** a folk tune in 6/8 for lute, recorder, harp and frame drum; *Benalish March*,
+  a fanfare over snare drums; *Tolarian Shores*, a gentle waltz for harp and flute.
+- **Ravnica:** gothic city music with harpsichord, strings, bells and choir; *Tenth District*,
+  busy harpsichord over a plucked bass; *Guild Spires*, a gothic waltz for choir and strings.
+- **Avishkar:** a bright workshop city with sitar, bansuri, tabla and a ticking santoor; *Grand
+  Prix*, a fast race with a sitar riff; *Filigree Dawn*, a calm morning raga.
 
 The Music button on the title screen and in the menu, or N in a match, turns it off; M mutes everything.
+
+## Voices
+Every troop answers in its race's voice when you select it, order it to move or attack, and when
+it is trained (three lines for each order, taken in turn). Phyrexians speak in a doubled,
+metallic rasp, the Angel of the Host echoes, golems and colossi rumble; hounds, drakes, the Gorger
+Engine, servos and thopters growl, shriek, grind, beep and whirr. The Voices button on the title
+screen and in the menu turns them off.
 
 ## Files
 | Path | What |
@@ -126,5 +140,6 @@ The Music button on the title screen and in the menu, or N in a match, turns it 
 | `scripts/lineup.gd` | The model check (`--lineup`) |
 | `scripts/portraits.gd` | Renders the portraits for the command card and codex at start-up |
 | `scripts/game.gd` | Settings, materials, fonts, the generated sounds and the music player |
-| `music/`, `tools/gen_music.py` | The music: a title theme and one theme per race, synthesised by the script (`python3 tools/gen_music.py`, needs numpy and ffmpeg) |
+| `music/`, `tools/gen_music.py` | The music: three menu themes and three per race, synthesised by the script (`python3 tools/gen_music.py`, needs numpy and ffmpeg) |
+| `voices/`, `tools/gen_voices.py` | The unit voices (`python3 tools/gen_voices.py`, needs piper-tts; speech by the Piper LibriTTS-R voice, trained on LibriTTS-R, CC BY 4.0) |
 | `shaders/` | Units (team colour, and `rig.gdshaderinc`, which animates legs, arms, wings and wheels), ground, water, effects |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the background music in music/: a title theme and one theme per race.
+"""Generates the background music in music/: three menu themes and three themes per race.
 
 Everything is synthesised here with numpy (additive instruments, plucks, drums and a
 convolution reverb) and encoded to Ogg Vorbis with ffmpeg. Each track is one seamless loop:
@@ -756,7 +756,326 @@ def avishkar():
 	return s
 
 
-TRACKS = {"title": title, "phyrexia": phyrexia, "dominaria": dominaria, "ravnica": ravnica, "avishkar": avishkar}
+# --- second and third themes ---------------------------------------------------------------
+
+@functools.lru_cache(maxsize=None)
+def stacc(m, dur):
+	"""Short bowed strings for ostinatos."""
+	f = hz(m)
+	s = 0
+	for i, c in enumerate((-6.0, 6.0)):
+		s = s + additive(f, dur, saw(20), att=0.015, rel=0.14, cents=c, seed=m * 7 + i)
+	return s * 0.2
+
+
+@functools.lru_cache(maxsize=None)
+def pizz(m, dur):
+	return pluck(m, dur, 0.5, 0.5) * 1.1
+
+
+def title2():
+	"""Gathering Storm: E minor, driving string ostinato under a horn call."""
+	s = Song(92, 4, 32, room=2.8, dark=0.45)
+	A = "Em C G D Em C Am B"
+	B = "C D Em Em C D B B"
+	theme = ("E4:1 G4:0.5 A4:0.5 B4:2 | C5:1 B4:0.5 A4:0.5 G4:2 | B4:1 D5:1 G4:1 B4:1 | A4:3 F#4:1 |"
+			" E4:1 G4:0.5 A4:0.5 B4:2 | E5:1.5 D5:0.5 C5:2 | C5:1 B4:1 A4:1 C5:1 | B4:3 r:1")
+	high = "E5:2 G5:2 | F#5:2 D5:2 | E5:1 F#5:1 G5:1 B5:1 | B5:4 | G5:2 E5:2 | A5:2 F#5:2 | D#5:1 E5:1 F#5:1 A5:1 | F#5:3 D#5:1"
+	osti = [0, 0, 1, 0, 2, 0, 1, 0] * 2
+	for b0 in (0, 8, 24):
+		arp(s, stacc, A, b0, osti, midi("E3"), gain=0.55, pan=-0.2, spread=0.3)
+		bassline(s, A, b0, [(0, 0.5, 0), (0.5, 0.5, 0), (1, 0.5, 0), (1.5, 0.5, 0), (2, 0.5, 0), (2.5, 0.5, 0), (3, 1, 2)], low=midi("E2"), gain=0.6)
+	drums(s, "X.......X...x...", 0, 8, taiko(1.0), gain=0.7, rev=0.3)
+	s.add(swell(s.beat * 4), s.t(7), 0, 1.0, 0.4)
+	line(s, horn, theme, 8, gain=1.0, pan=-0.1, rev=0.35)
+	line(s, horn, theme, 8, gain=0.5, pan=0.15, rev=0.35, shift=-12)
+	drums(s, "X..xX.x.X..xX.xx", 8, 8, taiko(1.05), gain=0.85, rev=0.3)
+	drums(s, "....x.......x...", 8, 8, snare(), gain=0.55, rev=0.3)
+	line(s, lambda m, d: strings(m, d, 1.3), high, 16, gain=1.0, pan=0.1, rev=0.4)
+	pads(s, choir, B, 16, low=midi("B3"), gain=0.7)
+	arp(s, stacc, B, 16, [0, 1, 2, 1] * 2, midi("E3"), gain=0.45, pan=-0.25)
+	bassline(s, B, 16, [(0, 2, 0), (2, 2, 0)], low=midi("E2"), gain=0.7)
+	drums(s, "X.......X.......", 16, 8, taiko(0.95), gain=0.75, rev=0.35)
+	drums(s, "..x...x...x...x.", 16, 8, shaker(), gain=0.7)
+	s.add(swell(s.beat * 4), s.t(23), 0, 1.3, 0.4)
+	line(s, horn, theme, 24, gain=1.0, pan=-0.1, rev=0.35)
+	line(s, lambda m, d: strings(m, d, 1.2), theme, 24, gain=0.55, pan=0.2, rev=0.4, shift=12)
+	pads(s, choir, A, 24, low=midi("B3"), gain=0.55)
+	drums(s, "X..xX.x.X..xX.xx", 24, 7, taiko(1.05), gain=0.9, rev=0.3)
+	drums(s, "....x.......x...", 24, 7, snare(), gain=0.6, rev=0.3)
+	s.add(taiko(0.8), s.t(31), 0, 1.0, 0.4)
+	return s
+
+
+def title3():
+	"""Elegy for the Planes: a slow D minor waltz for harp, flute, choir and strings."""
+	s = Song(66, 3, 32, room=3.2, dark=0.4)
+	A = "Dm Bb F C Dm Gm A A"
+	B = "F C Dm Bb Gm C F A"
+	mel = "A4:2 D5:1 | F5:2 E5:1 | C5:2 A4:1 | G4:2 E4:1 | F4:1 A4:1 D5:1 | Bb4:2 G4:1 | A4:1.5 G4:0.5 E4:1 | A4:3"
+	mel_b = "C5:3 | E5:2 C5:1 | D5:2 F5:1 | D5:3 | Bb4:2 D5:1 | C5:2 E5:1 | F5:2 A4:1 | C#5:3"
+	harp = lambda m, d: pluck(m, d, 0.6, 1.6)
+	pat = [0, 1, 2, 3, 2, 1]
+	for b0, ch in ((0, A), (8, A), (16, B), (24, A)):
+		arp(s, harp, ch, b0, pat, midi("D3"), gain=0.65, pan=-0.25, spread=0.4)
+		bassline(s, ch, b0, [(0, 3, 0)], low=midi("D2"), gain=0.45)
+	pads(s, lambda m, d: strings(m, d, 0.6), A, 0, low=midi("D3"), gain=0.4)
+	line(s, flute, mel, 8, gain=0.9, pan=0.15, rev=0.45)
+	pads(s, lambda m, d: strings(m, d, 0.6), A, 8, low=midi("D3"), gain=0.4)
+	line(s, choir, mel_b, 16, gain=0.95, pan=0.0, rev=0.6)
+	pads(s, lambda m, d: strings(m, d, 0.7), B, 16, low=midi("A2"), gain=0.5)
+	for b in range(16, 24, 2):
+		s.add(bell(chord(B.split()[b - 16], midi("A4"))[0], 4.0), s.t(b), 0.35, 0.4, 0.6)
+	line(s, flute, mel, 24, gain=0.85, pan=0.15, rev=0.45)
+	line(s, lambda m, d: strings(m, d, 0.9), mel, 24, gain=0.5, pan=-0.15, rev=0.45, shift=-12)
+	pads(s, lambda m, d: choir(m, d, "oo"), A, 24, low=midi("A3"), gain=0.4, extra_octave=False)
+	drums(s, "X.....", 24, 8, taiko(0.85), gain=0.45, rev=0.4)
+	return s
+
+
+def phyrexia2():
+	"""Glistening Oil: F# phrygian machinery, quicker, with a strained horn line."""
+	s = Song(84, 4, 32, room=3.6, dark=0.7)
+	prog = "F#m G F#m G D Em F#m G"
+	mel = "F#4:2 G4:2 | A4:1 G4:1 F#4:2 | C#5:3 D5:1 | C#5:4 | B4:2 A4:2 | G4:1 A4:1 B4:2 | A4:2 G4:1 F#4:1 | G4:4"
+	for b in range(32):
+		if b >= 30:
+			break
+		notes = chord(prog.split()[b % 8], midi("F#4"))
+		for i in range(16):
+			m = notes[(3 - i) % 3] + (12 if i % 8 < 2 else 0)
+			s.add(metal(m, 0.8, seed=i % 4 + 1), s.t(b, i * 0.25), (i % 4 - 1.5) * 0.3, 0.32 if i % 4 else 0.45, 0.35, 0.003)
+		for i in range(8):
+			s.add(bass(midi("F#2") + (1 if i % 2 else 0), round(s.beat * 0.45, 3)), s.t(b, i * 0.5), 0.0, 0.55, 0.1, 0.002)
+	drums(s, "X.x.X.x.X.x.X.x.", 0, 30, kick(), gain=0.7, rev=0.25)
+	for b in (7, 15, 23):
+		s.add(swell(s.beat * 4), s.t(b), 0.3, 1.2, 0.5)
+	pads(s, lambda m, d: choir(m, d, "oo"), prog, 8, low=midi("F#3"), gain=0.6, extra_octave=False)
+	line(s, horn, mel, 16, gain=1.0, pan=-0.1, rev=0.45)
+	line(s, horn, mel, 16, gain=0.5, pan=0.2, rev=0.45, shift=-12)
+	pads(s, lambda m, d: strings(m, d, 0.7), prog, 16, low=midi("F#2"), gain=0.5)
+	line(s, horn, mel, 24, gain=1.0, pan=-0.1, rev=0.45)
+	line(s, choir, mel, 24, gain=0.7, pan=0.1, rev=0.6, shift=12)
+	drums(s, "X..x..x.X..x....", 24, 6, taiko(0.85), gain=0.9, rev=0.35)
+	s.add(metal(midi("F#3"), 3.0, seed=7), s.t(30), 0.0, 0.9, 0.7)
+	return s
+
+
+def phyrexia3():
+	"""Compleation: a slow B flat minor dirge with tolling bells, low brass and choir."""
+	s = Song(56, 4, 24, room=4.5, dark=0.75)
+	prog = "Bbm Bbm Gb F Bbm Ebm F F"
+	mel = "F4:4 | Gb4:4 | Bb4:2 Ab4:2 | A4:4 | Bb4:2 Db5:2 | C5:2 Bb4:1 Gb4:1 | F4:2 E4:2 | F4:4"
+	brass = "Bb2:4 | Bb2:2 Db3:2 | Gb2:4 | F2:4 | Bb2:2 Ab2:2 | Gb2:2 Eb2:2 | F2:4 | F2:2 E2:2"
+	for b in range(24):
+		s.add(bell(midi("Bb2"), 5.0), s.t(b), -0.2, 0.7, 0.6)
+	for b0 in (0, 8, 16):
+		pads(s, lambda m, d: strings(m, d, 0.6), prog, b0, low=midi("F2"), gain=0.55, rev=0.5)
+		bassline(s, prog, b0, [(0, 4, 0)], low=midi("Bb1"), gain=0.5)
+	line(s, choir, mel, 8, gain=1.0, pan=0.1, rev=0.65)
+	line(s, horn, brass, 16, gain=1.1, pan=-0.15, rev=0.5)
+	line(s, choir, mel, 16, gain=0.8, pan=0.1, rev=0.65, shift=12)
+	drums(s, "X.......X.......", 16, 8, taiko(0.75), gain=0.8, rev=0.4)
+	return s
+
+
+def dominaria2():
+	"""Benalish March: a G major fanfare over snare drums."""
+	s = Song(112, 4, 40, room=2.4, dark=0.4)
+	A = "G F C G G C D G"
+	B = "Em C G D Em C D D"
+	fan = ("G4:1 G4:0.5 G4:0.5 D5:2 | C5:1 A4:0.5 F4:0.5 G4:2 | E4:1 G4:1 C5:1 E5:1 | D5:3 r:1 |"
+			" B4:1 D5:0.5 B4:0.5 G4:2 | C5:1.5 B4:0.5 A4:1 G4:1 | A4:1 B4:1 C5:1 D5:1 | G4:3 r:1")
+	counter = "B5:2 G5:2 | E5:2 G5:2 | D5:1 B4:1 G5:2 | F#5:3 A5:1 | G5:2 E5:1 G5:1 | C6:2 G5:2 | A5:1 G5:1 F#5:1 E5:1 | D5:4"
+	march = "X.xxX.x.X.xxX.xx"
+	drums(s, "xxxxxxxxxxxxxxxX", 0, 4, snare(0.25), gain=0.45, rev=0.3)
+	bassline(s, "G G G D", 0, [(0, 1, 0), (2, 1, 0)], low=midi("G1"), gain=0.6)
+	line(s, horn, fan, 4, gain=1.0, pan=-0.1, rev=0.3)
+	line(s, horn, fan, 4, gain=0.5, pan=0.15, rev=0.3, shift=-12)
+	for b0 in (4, 12, 28):
+		bassline(s, A, b0, [(0, 1, 0), (1, 1, 2), (2, 1, 0), (3, 1, 2)], low=midi("G1"), gain=0.7)
+		drums(s, march, b0, 8, snare(), gain=0.6, rev=0.3)
+	line(s, horn, fan, 12, gain=1.0, pan=-0.1, rev=0.3)
+	line(s, lambda m, d: strings(m, d, 1.2), fan, 12, gain=0.55, pan=0.2, rev=0.35, shift=12)
+	pads(s, strings, A, 12, low=midi("D3"), gain=0.4)
+	line(s, flute, counter, 20, gain=0.9, pan=0.2, rev=0.4)
+	line(s, lambda m, d: strings(m, d, 1.1), counter, 20, gain=0.5, pan=-0.2, rev=0.4, shift=-12)
+	pads(s, lambda m, d: choir(m, d, "oo"), B, 20, low=midi("B3"), gain=0.5, extra_octave=False)
+	bassline(s, B, 20, [(0, 2, 0), (2, 2, 2)], low=midi("G1"), gain=0.65)
+	drums(s, "X.......X.......", 20, 8, taiko(1.0), gain=0.6, rev=0.35)
+	s.add(swell(s.beat * 4), s.t(27), 0, 1.0, 0.4)
+	line(s, horn, fan, 28, gain=1.0, pan=-0.1, rev=0.3)
+	line(s, flute, fan, 28, gain=0.45, pan=0.3, rev=0.4, shift=12)
+	pads(s, strings, A, 28, low=midi("D3"), gain=0.45)
+	drums(s, "X...X...X...X.x.", 28, 8, taiko(1.0), gain=0.75, rev=0.3)
+	drums(s, march, 36, 3, snare(), gain=0.5, rev=0.3)
+	bassline(s, "G C D G", 36, [(0, 2, 0), (2, 2, 2)], low=midi("G1"), gain=0.6)
+	drums(s, "xxxxxxxxxxxxxxxX", 39, 1, snare(0.25), gain=0.45, rev=0.3)
+	return s
+
+
+def dominaria3():
+	"""Tolarian Shores: a gentle A minor waltz for harp and flute."""
+	s = Song(84, 3, 40, room=2.6, dark=0.4)
+	A = "Am F C G Am F G E"
+	B = "F G Am Am F G Em Am"
+	mel = "E5:2 C5:1 | A4:2 C5:1 | G4:2 E4:1 | D5:2 B4:1 | C5:1 B4:1 A4:1 | F5:2 E5:1 | D5:1 C5:1 B4:1 | G#4:3"
+	mel_b = "A5:2 G5:1 | F5:3 | E5:2 D5:1 | C5:3 | A5:2 B5:1 | C6:2 B5:1 | A5:1 G5:1 E5:1 | A5:3"
+	harp = lambda m, d: pluck(m, d, 0.6, 1.6)
+	pat = [0, 2, 3, 4, 3, 2]
+	for b0, ch in ((0, A), (8, A), (16, B), (24, A), (32, A)):
+		arp(s, harp, ch, b0, pat, midi("A2"), gain=0.65, pan=-0.25, spread=0.4)
+	pads(s, lambda m, d: strings(m, d, 0.6), A, 0, low=midi("A2"), gain=0.35)
+	line(s, flute, mel, 8, gain=0.9, pan=0.15, rev=0.4)
+	bassline(s, A, 8, [(0, 3, 0)], low=midi("A1"), gain=0.5)
+	drums(s, "X..x..", 8, 8, frame_drum(), gain=0.5)
+	line(s, lambda m, d: strings(m, d, 1.1), mel_b, 16, gain=0.95, pan=0.1, rev=0.45)
+	pads(s, lambda m, d: choir(m, d, "oo"), B, 16, low=midi("A3"), gain=0.45, extra_octave=False)
+	bassline(s, B, 16, [(0, 3, 0)], low=midi("A1"), gain=0.55)
+	drums(s, "X..x.x", 16, 8, frame_drum(), gain=0.55)
+	line(s, flute, mel, 24, gain=0.9, pan=0.15, rev=0.4)
+	line(s, lambda m, d: strings(m, d, 0.9), mel, 24, gain=0.45, pan=-0.15, rev=0.45, shift=-12)
+	bassline(s, A, 24, [(0, 2, 0), (2, 1, 2)], low=midi("A1"), gain=0.55)
+	drums(s, "X..x.x", 24, 8, frame_drum(), gain=0.55)
+	drums(s, ".x.x.x", 24, 8, shaker(), gain=0.5)
+	pads(s, lambda m, d: strings(m, d, 0.6), A, 32, low=midi("A2"), gain=0.35)
+	for b in (32, 36, 39):
+		s.add(bell(midi("E5"), 4.0), s.t(b), 0.4, 0.35, 0.6)
+	return s
+
+
+def ravnica2():
+	"""Tenth District: D harmonic minor, busy harpsichord, plucked bass, strings."""
+	s = Song(120, 4, 40, room=3.0, dark=0.5)
+	A = "Dm Gm C F Bb Gm A A"
+	B = "Bb A Dm Dm Gm Dm Gm A"
+	mel = ("D5:1 F5:1 A5:1 D6:1 | Bb5:1.5 A5:0.5 G5:2 | E5:1 G5:1 C6:1 Bb5:1 | A5:2 F5:2 |"
+			" D5:1 F5:1 Bb5:1 D6:1 | D6:1 C6:0.5 Bb5:0.5 G5:2 | C#6:1 A5:1 E5:1 G5:1 | A5:4")
+	mel_b = "F5:4 | E5:4 | D5:2 C#5:2 | D5:4 | Bb4:4 | A4:4 | G4:2 A4:2 | A4:4"
+	alberti = [0, 2, 1, 2] * 4
+	walk = [(0, 1, 0), (1, 1, 2), (2, 1, 1), (3, 1, 2)]
+	for b0, ch in ((0, A), (8, A), (16, B), (24, A), (32, A)):
+		arp(s, harpsichord, ch, b0, alberti, midi("D4"), gain=0.7, pan=-0.25)
+		bassline(s, ch, b0, walk, low=midi("D2"), gain=0.8, play=pizz)
+	line(s, lambda m, d: strings(m, d, 1.2), mel, 8, gain=0.95, pan=0.1, rev=0.4)
+	drums(s, "X.x.x.x.X.x.x.xx", 8, 8, snare(), gain=0.5, rev=0.3)
+	line(s, choir, mel_b, 16, gain=1.0, pan=0.0, rev=0.6)
+	pads(s, lambda m, d: strings(m, d, 0.7), B, 16, low=midi("A2"), gain=0.5)
+	for b in range(16, 24, 2):
+		s.add(bell(chord(B.split()[b - 16], midi("D5"))[0], 4.0), s.t(b), 0.4, 0.4, 0.6)
+	line(s, lambda m, d: strings(m, d, 1.2), mel, 24, gain=0.95, pan=0.1, rev=0.4)
+	line(s, horn, mel, 24, gain=0.5, pan=-0.2, rev=0.4, shift=-12)
+	drums(s, "X.x.x.x.X.x.x.xx", 24, 8, snare(), gain=0.55, rev=0.3)
+	drums(s, "X.......X...x...", 24, 8, taiko(1.1), gain=0.6, rev=0.3)
+	s.add(swell(s.beat * 4), s.t(23), 0, 1.0, 0.5)
+	return s
+
+
+def ravnica3():
+	"""Guild Spires: a gothic C minor waltz in 6/8, choir, strings, bells."""
+	s = Song(150, 6, 40, room=3.8, dark=0.5)  # beats are eighth notes
+	A = "Cm Ab Fm G Cm Eb Fm G"
+	B = "Ab Bb Eb Cm Fm G Cm G"
+	mel = "G5:3 Eb5:2 C5:1 | C5:3 Ab4:3 | F4:2 Ab4:1 C5:3 | B4:6 | G4:2 C5:1 Eb5:3 | G5:2 F5:1 Eb5:3 | F5:2 Eb5:1 D5:2 C5:1 | B4:3 D5:3"
+	mel_b = "C6:3 Bb5:3 | D6:3 Bb5:3 | G5:3 Eb5:3 | G5:6 | Ab5:3 F5:3 | D5:3 B4:3 | C5:2 D5:1 Eb5:3 | D5:6"
+	pat = [0, 1, 2, 3, 2, 1]
+	for b0, ch in ((0, A), (8, A), (16, B), (24, A), (32, A)):
+		arp(s, harpsichord, ch, b0, pat, midi("C4"), gain=0.6, pan=-0.3)
+		bassline(s, ch, b0, [(0, 3, 0), (3, 3, 2)], low=midi("C2"), gain=0.6)
+	for b in range(0, 8, 2):
+		s.add(bell(chord(A.split()[b], midi("C5"))[0], 4.0), s.t(b), 0.4, 0.5, 0.6)
+	line(s, choir, mel, 8, gain=1.0, pan=0.0, rev=0.6)
+	pads(s, lambda m, d: strings(m, d, 0.7), A, 8, low=midi("G2"), gain=0.5)
+	line(s, lambda m, d: strings(m, d, 1.2), mel_b, 16, gain=0.95, pan=0.1, rev=0.5)
+	pads(s, choir, B, 16, low=midi("G3"), gain=0.5)
+	drums(s, "X..x..", 16, 8, taiko(1.0), gain=0.6, rev=0.35)
+	line(s, choir, mel, 24, gain=1.0, pan=0.0, rev=0.6)
+	line(s, horn, mel, 24, gain=0.5, pan=-0.2, rev=0.45, shift=-12)
+	pads(s, lambda m, d: strings(m, d, 0.8), A, 24, low=midi("G2"), gain=0.5)
+	drums(s, "X..xx.", 24, 8, taiko(1.0), gain=0.7, rev=0.35)
+	s.add(swell(s.beat * 6), s.t(23), 0, 1.0, 0.5)
+	pads(s, lambda m, d: strings(m, d, 0.6), A, 32, low=midi("G2"), gain=0.45)
+	s.add(bell(midi("G4"), 5.0), s.t(39), 0.4, 0.5, 0.6)
+	return s
+
+
+def avishkar2():
+	"""Grand Prix: a fast E mixolydian race with a sitar riff, santoor and tabla."""
+	s = Song(128, 4, 48, room=2.0, dark=0.35)
+	riff = ("E4:0.5 G#4:0.5 B4:0.5 C#5:0.5 D5:1 B4:1 | A4:0.5 B4:0.5 G#4:0.5 F#4:0.5 E4:2 |"
+			" E4:0.5 G#4:0.5 B4:0.5 D5:0.5 E5:1 D5:0.5 B4:0.5 | C#5:1 B4:0.5 A4:0.5 B4:2")
+	B = "D A E E D A Bm E"
+	ban = "F#5:2 A5:2 | E5:2 C#5:2 | B4:1 C#5:1 E5:2 | E5:4 | A5:2 F#5:2 | E5:2 C#5:2 | D5:1 C#5:1 B4:2 | B4:2 G#4:2"
+	for b in range(48):
+		for i, m in enumerate((midi("B3"), midi("E4"), midi("E4"), midi("E3"))):
+			s.add(tanpura(m, round(s.beat * 1.1, 3)), s.t(b, i), -0.3 + i * 0.2, 0.6, 0.4)
+	tick = [midi(n) for n in ("E5", "B4", "E5", "F#5", "G#5", "B4", "A5", "B4")]
+	for b in list(range(0, 8)) + list(range(32, 40)):
+		for i in range(16):
+			s.add(santoor(tick[i % 8]), s.t(b, i * 0.25), 0.35, 0.45 if i % 4 == 0 else 0.28, 0.3, 0.003)
+	drums(s, "X...x...X...x...", 0, 40, kick(), gain=0.65, rev=0.2)
+	sit = lambda m, d, p=None: sitar(m, d, p)
+	for b0 in (8, 12, 16, 20, 32, 36):
+		line(s, sit, riff, b0, gain=1.0, pan=0.1, rev=0.3, glide=True)
+	for b0 in (16, 20):
+		line(s, flute, riff, b0, gain=0.4, pan=-0.3, rev=0.35, shift=12)
+	bols = ["dha", "na", "dhin", "na", "dha", "dha", "tin", "na"]
+	for b in range(8, 48):
+		if 40 <= b < 44:
+			continue
+		for i in range(8):
+			s.add(tabla(bols[i]), s.t(b, i * 0.5), 0.15, 0.75 if i == 0 else 0.5, 0.15, 0.003)
+	line(s, flute, ban, 24, gain=1.0, pan=-0.1, rev=0.4)
+	pads(s, lambda m, d: strings(m, d, 0.9), B, 24, low=midi("D3"), gain=0.5)
+	bassline(s, B, 24, [(0, 1.5, 0), (1.5, 1, 2), (3, 1, 0)], low=midi("D2"), gain=0.6)
+	for b in range(40, 44):
+		for i in range(16):
+			bol = ("dha", "ge", "na", "tin")[(i * 3 + b) % 4]
+			s.add(tabla(bol), s.t(b, i * 0.25), 0.15, 0.6 if i % 4 == 0 else 0.4, 0.15, 0.003)
+	line(s, sit, riff, 44, gain=1.0, pan=0.1, rev=0.3, glide=True)
+	line(s, flute, riff, 44, gain=0.45, pan=-0.3, rev=0.35, shift=12)
+	s.add(swell(s.beat * 4), s.t(31), 0, 0.9, 0.4)
+	return s
+
+
+def avishkar3():
+	"""Filigree Dawn: a calm G morning raga, bansuri over a drone, sitar and soft tabla."""
+	s = Song(72, 4, 32, room=2.6, dark=0.35)
+	alap = "B4:4 | A4:2 B4:2 | C#5:3 B4:1 | A4:4 | G4:2 A4:2 | B4:2 D5:2 | C#5:2 B4:1 A4:1 | B4:4"
+	gat = ("G4:1 A4:0.5 B4:0.5 C#5:1 D5:1 | E5:1.5 D5:0.5 C#5:1 B4:1 | A4:1 B4:0.5 C#5:0.5 D5:1 B4:1 | A4:2 G4:2 |"
+			" B4:1 C#5:0.5 D5:0.5 E5:1 F#5:1 | G5:2 F#5:1 E5:1 | D5:1 E5:0.5 D5:0.5 C#5:1 A4:1 | B4:3 r:1")
+	B = "G D Em Bm G A D G"
+	ban = "D5:3 E5:1 | F#5:4 | E5:2 G5:2 | F#5:4 | D5:2 B4:2 | C#5:2 E5:2 | F#5:1 E5:1 D5:2 | D5:4"
+	for b in range(32):
+		for i, m in enumerate((midi("D4"), midi("G4"), midi("G4"), midi("G3"))):
+			s.add(tanpura(m, round(s.beat * 1.1, 3)), s.t(b, i), -0.3 + i * 0.2, 0.7, 0.4)
+	line(s, flute, alap, 0, gain=0.9, pan=-0.1, rev=0.5)
+	sit = lambda m, d, p=None: sitar(m, d, p)
+	line(s, sit, gat, 8, gain=0.95, pan=0.1, rev=0.4, glide=True)
+	theka = ["dha", "dhin", "dhin", "dha", "dha", "dhin", "dhin", "dha", "dha", "tin", "tin", "ta", "ta", "dhin", "dhin", "dha"]
+	for b0, bars in ((8, 8), (24, 8)):
+		for b in range(bars):
+			for i in range(4):
+				s.add(tabla(theka[(b % 4) * 4 + i]), s.t(b0 + b, i), 0.15, 0.55 if i else 0.7, 0.2, 0.004)
+	line(s, flute, ban, 16, gain=1.0, pan=-0.1, rev=0.5)
+	pads(s, lambda m, d: strings(m, d, 0.7), B, 16, low=midi("D3"), gain=0.45)
+	bassline(s, B, 16, [(0, 4, 0)], low=midi("G1"), gain=0.45)
+	line(s, sit, gat, 24, gain=0.95, pan=0.1, rev=0.4, glide=True)
+	line(s, flute, gat, 24, gain=0.4, pan=-0.3, rev=0.45, shift=12)
+	tick = [midi(n) for n in ("G5", "D5", "B5", "D5", "C#6", "D5", "B5", "D5")]
+	for b in range(24, 32):
+		for i in range(8):
+			s.add(santoor(tick[i]), s.t(b, i * 0.5), 0.35, 0.3, 0.4, 0.003)
+	return s
+
+
+TRACKS = {
+	"title": title, "title2": title2, "title3": title3,
+	"phyrexia": phyrexia, "phyrexia2": phyrexia2, "phyrexia3": phyrexia3,
+	"dominaria": dominaria, "dominaria2": dominaria2, "dominaria3": dominaria3,
+	"ravnica": ravnica, "ravnica2": ravnica2, "ravnica3": ravnica3,
+	"avishkar": avishkar, "avishkar2": avishkar2, "avishkar3": avishkar3,
+}
 
 
 def write(name, song, keep_wav):
@@ -765,7 +1084,7 @@ def write(name, song, keep_wav):
 	os.makedirs(OUT, exist_ok=True)
 	ogg = os.path.join(OUT, name + ".ogg")
 	cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", str(SR), "-ac", "2", "-i", "-",
-			"-c:a", "libvorbis", "-q:a", "3", ogg]
+			"-c:a", "libvorbis", "-q:a", "0", ogg]
 	subprocess.run(cmd, input=pcm, check=True)
 	if keep_wav:
 		os.makedirs("/tmp/pw-music", exist_ok=True)

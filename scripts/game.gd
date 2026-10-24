@@ -1,6 +1,6 @@
 extends Node
-## Autoload `Game`: settings (graphics quality, sound, music, player name), fonts, the shared
-## materials, the generated sound effects and the music player.
+## Autoload `Game`: settings (graphics quality, sound, music, voices, player name), fonts, the
+## shared materials, the generated sound effects, the music player and the unit voices.
 
 signal quality_changed
 
@@ -20,6 +20,7 @@ var quality := MEDIUM
 var quality_chosen := false
 var muted := false
 var music_on := true
+var voices_on := true
 var web := false
 var testing := false
 var font_title: FontVariation
@@ -43,6 +44,12 @@ var _playlist_at := 0
 var _track_end := 0                     # Time.get_ticks_msec() when the current track ends
 var _music_tween: Tween
 
+var _voice: AudioStreamPlayer
+var _voice_bus := 0
+var _voice_cache := {}
+var _voice_turn := {}                   # "race_role_event" -> the next of its lines
+var _voice_at := 0
+
 const MUSIC_DB := -10.0                  # the Music bus level (default_bus_layout.tres has the bus)
 const MUSIC_FADE := 1.2
 
@@ -59,6 +66,7 @@ func _ready() -> void:
 			quality_chosen = true
 		muted = bool(cfg.get_value("audio", "muted", false))
 		music_on = bool(cfg.get_value("audio", "music", true))
+		voices_on = bool(cfg.get_value("audio", "voices", true))
 	for a in args:
 		if a.begins_with("--quality="):
 			quality = clampi(int(a.get_slice("=", 1)), LOW, HIGH)
@@ -108,6 +116,11 @@ func _ready() -> void:
 	_music.bus = "Music"
 	add_child(_music)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_voice_bus = AudioServer.get_bus_index("Voice")
+	AudioServer.set_bus_mute(_voice_bus, not voices_on)
+	_voice = AudioStreamPlayer.new()
+	_voice.bus = "Voice"
+	add_child(_voice)
 
 
 func _setup_input() -> void:
@@ -162,6 +175,12 @@ func toggle_music() -> void:
 	_save()
 
 
+func toggle_voices() -> void:
+	voices_on = not voices_on
+	AudioServer.set_bus_mute(_voice_bus, not voices_on)
+	_save()
+
+
 func _save() -> void:
 	if testing:
 		return
@@ -171,6 +190,7 @@ func _save() -> void:
 		cfg.set_value("video", "quality", quality)
 	cfg.set_value("audio", "muted", muted)
 	cfg.set_value("audio", "music", music_on)
+	cfg.set_value("audio", "voices", voices_on)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -193,7 +213,8 @@ func play(name: String, vol_db := 0.0, pitch := 1.0) -> void:
 
 
 # --- music -----------------------------------------------------------------------------
-# Tracks are music/<name>.ogg, made by tools/gen_music.py: "title" and one per race.
+# Tracks are music/<name>.ogg, made by tools/gen_music.py: three menu themes ("title", "title2",
+# "title3") and three per race ("<race>", "<race>2", "<race>3").
 
 ## Plays the tracks one after another, round and round (one track loops on its own).
 ## Fades out whatever is playing first; does nothing if this playlist already plays.
@@ -208,14 +229,20 @@ func play_music(tracks: Array) -> void:
 		_start_track()
 
 
-## A match's music: the player's race theme first, then the other races' and the title theme.
+const MENU_MUSIC := ["title", "title2", "title3"]
+
+
+## A match's music: the player's race's three themes first, then the other races' and the menu themes.
 func match_playlist(race: String) -> Array:
-	var list := [race] if race in Data.RACE_ORDER else []
-	for r in Data.RACE_ORDER:
-		if r != race:
-			list.append(r)
-	list.append("title")
-	return list
+	var list := []
+	var order: Array = Data.RACE_ORDER.duplicate()
+	if race in order:
+		order.erase(race)
+		order.push_front(race)
+	for r in order:
+		for n in ["", "2", "3"]:
+			list.append(r + n)
+	return list + MENU_MUSIC
 
 
 ## The track playing now ("" if none).
@@ -247,6 +274,48 @@ func _process(_delta: float) -> void:
 	if _playlist.size() > 1 and Time.get_ticks_msec() > _track_end:
 		_playlist_at = (_playlist_at + 1) % _playlist.size()
 		_start_track()
+
+
+# --- voices ----------------------------------------------------------------------------
+# Clips are voices/<race>_<role>_<event><n>.ogg, made by tools/gen_voices.py.
+
+## A troop answers: event is "select", "move", "attack" (three lines each, taken in turn) or
+## "ready". A new order cuts in once the last line has had a moment; "ready" waits for quiet.
+func say(race: String, role: String, event: String) -> void:
+	if not voices_on:
+		return
+	var now := Time.get_ticks_msec()
+	if _voice.playing and (event == "ready" or now - _voice_at < 400):
+		return
+	var key := "%s_%s_%s" % [race, role, event]
+	var count := 1 if event == "ready" else 3
+	var i: int = _voice_turn.get(key, randi() % count)
+	_voice_turn[key] = (i + 1) % count
+	var path := "res://voices/%s%d.ogg" % [key, i]
+	if not _voice_cache.has(path):
+		if not ResourceLoader.exists(path):
+			return
+		_voice_cache[path] = load(path)
+	_voice.stream = _voice_cache[path]
+	_voice.play()
+	_voice_at = now
+
+
+## The clip playing now ("" if none), for the tests.
+func voice_now() -> String:
+	return _voice.stream.resource_path.get_file() if _voice.playing and _voice.stream else ""
+
+
+## The voice that answers for a group: the troop kind most of them are.
+func lead_role(ents: Array) -> String:
+	var count := {}
+	var best := ""
+	for e in ents:
+		if e.is_unit():
+			count[e.role] = int(count.get(e.role, 0)) + 1
+			if best == "" or count[e.role] > count[best]:
+				best = e.role
+	return best
 
 
 func make_wav(dur: float, gen: Callable, rate := 22050) -> AudioStreamWAV:

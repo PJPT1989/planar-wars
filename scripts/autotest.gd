@@ -76,6 +76,8 @@ func _run() -> void:
 			if e.owner == 0 and e.role == "hall":
 				hall = e
 		m._set_selection(workers)
+		m._say_selected("select")
+		print("AUTOTEST voice ", Game.voice_now())
 		m.hud.submenu = "build"
 		m.hud.refresh()
 		await _wait(5)

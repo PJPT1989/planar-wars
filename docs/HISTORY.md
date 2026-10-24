@@ -68,3 +68,20 @@ models and animation).
 - Music on/off: a button on the title screen and in the menu, N in a match, saved with the
   other settings. M still mutes everything.
 
+## Round 4: more music and unit voices
+**Request (Petr):** "i cannot hear any music in the test" (fixed: the browser's Web Audio sample
+playback ignored the code-made music bus and the volume fade), then "extend the track list to
+have 3 times the amount of music tracks. Also, have each unit to have "voice" so that they react
+to commands".
+
+**Built:**
+- Ten more tracks (15 in all, about 23 minutes): three menu themes and three per race, each in
+  its race's style. Encoded at a lower bitrate, so all fifteen take 7.9 MB.
+- Voices: every troop answers when selected, ordered to move, ordered to attack and when trained,
+  with three original lines per order (320 clips, 3.2 MB). Speech is made offline with Piper
+  (LibriTTS-R voice, CC BY 4.0); each unit has its own speaker, picked by pitch and by how well a
+  speech recogniser understood its lines after the race's treatment (Phyrexian doubled metallic
+  rasp, the Angel's echo, deep slow golem, robotic colossus). Beasts and machines growl, shriek,
+  grind, beep or whirr instead.
+- Voices on/off button on the title screen and in the menu, saved with the settings.
+

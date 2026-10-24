@@ -249,6 +249,7 @@ func _key(k: InputEventKey) -> void:
 		elif groups.has(n):
 			var ids: Array = groups[n].filter(func(id): return sim.ents.has(id) and sim.ents[id].alive)
 			_set_selection(ids)
+			_say_selected("select")
 			if _last_group.n == n and Time.get_ticks_msec() - _last_group.t < 400 and not ids.is_empty():
 				view.look_at_point(sim.ents[ids[0]].pos)
 			_last_group = {"n": n, "t": Time.get_ticks_msec()}
@@ -331,6 +332,7 @@ func _click_select(sp: Vector2, add: bool, double: bool) -> void:
 			if o.owner == me and o.role == e.role:
 				ids.append(o.id)
 		_set_selection(ids)
+		_say_selected("select")
 		return
 	if add and e.owner == me:
 		var ids := selection.duplicate()
@@ -342,6 +344,17 @@ func _click_select(sp: Vector2, add: bool, double: bool) -> void:
 		return
 	_set_selection([e.id])
 	Game.play("click", -10.0)
+	_say_selected("select")
+
+
+## The selected troops answer in their race's voice.
+func _say_selected(event: String) -> void:
+	if me < 0:
+		return
+	var mine := selected_ents().filter(func(e): return e.owner == me)
+	var role := Game.lead_role(mine)
+	if role != "":
+		Game.say(sim.players[me].race, role, event)
 
 
 func _all_mine(ids: Array) -> bool:
@@ -373,6 +386,7 @@ func _box_select(r: Rect2, add: bool) -> void:
 		_set_selection(ids)
 	if not units.is_empty():
 		Game.play("ack", -10.0)
+		_say_selected("select")
 
 
 func selected_ents() -> Array:
@@ -414,10 +428,12 @@ func _order_at(sp: Vector2, attack: bool) -> void:
 			issue({"t": "target", "ids": ids, "id": tgt.id})
 		view.mark(tgt.pos, sim.enemies(me, tgt.owner))
 		Game.play("ack", -8.0)
+		_say_selected("attack" if sim.enemies(me, tgt.owner) else "move")
 		return
 	issue({"t": "amove" if attack else "move", "ids": ids, "x": g.x, "y": g.y})
 	view.mark(g, attack)
 	Game.play("ack", -8.0)
+	_say_selected("attack" if attack else "move")
 
 
 func _place_building(sp: Vector2, keep: bool) -> void:
@@ -435,6 +451,7 @@ func _place_building(sp: Vector2, keep: bool) -> void:
 	var workers := selected_ents().filter(func(e): return e.owner == me and e.role == "worker").map(func(e): return e.id)
 	issue({"t": "build", "ids": workers, "b": build_role, "cx": c.x, "cy": c.y})
 	Game.play("build", -10.0)
+	Game.say(sim.players[me].race, "worker", "move")
 	if not keep:
 		mode = ""
 
@@ -476,7 +493,8 @@ func local_event(e: Dictionary) -> void:
 				Game.play("horn", -8.0)
 		"trained":
 			if p == me:
-				Game.play("ready", -12.0)
+				Game.play("ready", -14.0)
+				Game.say(sim.players[me].race, str(e.role), "ready")
 		"built":
 			if p == me:
 				hud.notice("%s finished." % Data.building_name(sim.players[me].race, str(e.role)))

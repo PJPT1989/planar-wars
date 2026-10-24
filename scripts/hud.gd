@@ -371,6 +371,11 @@ func toggle_menu() -> void:
 		Game.toggle_music()
 		mb.text = "Music: " + ("on" if Game.music_on else "off"))
 	col.add_child(mb)
+	var vb := Ui.button("Voices: " + ("on" if Game.voices_on else "off"), func(): pass)
+	vb.pressed.connect(func():
+		Game.toggle_voices()
+		vb.text = "Voices: " + ("on" if Game.voices_on else "off"))
+	col.add_child(vb)
 	if m.me >= 0 and m.sim.players[m.me].alive:
 		col.add_child(Ui.button("Resign", func():
 			m.issue({"t": "resign"})
